@@ -33,7 +33,7 @@ const run = (cmd, args, options) => new Promise(((resolve, reject) => {
   });
 }));
 
-const bucket = 'cf-sourcecode';
+const bucket = process.argv[process.argv.length - 2];
 const packageName = process.argv[process.argv.length - 1];
 
 tmp
