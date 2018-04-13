@@ -1,0 +1,35 @@
+{
+  "name": "@nrfcloud/package-lambda",
+  "version": "1.0.0",
+  "description": "Package a lambda function and upload it to S3",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nrfcloud/package-lambda.git"
+  },
+  "keywords": [
+    "nRFCloud",
+    "IoT",
+    "NordicSemiconductor"
+  ],
+  "author": "Nordic Semiconductor ASA | nordicsemi.no",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/nrfcloud/package-lambda/issues"
+  },
+  "homepage": "https://github.com/nrfcloud/package-lambda#readme",
+  "dependencies": {
+    "aws-sdk": "^2.223.1",
+    "chalk": "^2.3.2",
+    "download-npm-package": "^3.1.12",
+    "ncp": "^2.0.0",
+    "tmp": "0.0.33"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=6.0.0"
+  },
+  "bin": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
