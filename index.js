@@ -10,6 +10,8 @@ const path = require('path');
 const ncpAsync = require('ncp').ncp;
 const ncp = promisify(ncpAsync);
 const chalk = require('chalk');
+const program = require('commander');
+const semver = require('semver');
 
 const run = (cmd, args, options) => new Promise(((resolve, reject) => {
   console.log(`${chalk.grey('running:')} ${chalk.yellow(cmd)} ${chalk.yellow(args.join(' '))} ${chalk.grey('...')}`);
@@ -33,13 +35,24 @@ const run = (cmd, args, options) => new Promise(((resolve, reject) => {
   });
 }));
 
-const bucket = process.argv[process.argv.length - 2];
-const packageName = process.argv[process.argv.length - 1];
+const createTempDir = () => new Promise((resolve, reject) => {
+  tmp
+    .dir(async (err, tempDir) => {
+      if (err) return reject(err);
+      console.log(`${chalk.gray('Temp dir:')} ${chalk.yellow(tempDir)}`);
+      resolve(tempDir);
+    }, { unsafeCleanup: false });
+});
 
-tmp
-  .dir(async (err, tempDir) => {
-    if (err) throw err;
-    console.log(`${chalk.gray('Temp dir:')} ${chalk.yellow(tempDir)}`);
+const publishToS3 = async (name, version, tempDir, bucket, env) => {
+  const zipFileName = `${name.split('/')[1] || name}-${version}.zip`;
+  const zipFile = `${tempDir}/${zipFileName}`;
+  await run('zip', ['-r', '-q', `${zipFile}`, './'], { cwd: tempDir });
+  await run('aws', ['s3', 'cp', zipFile, `s3://${bucket}/${zipFileName}`], { env: process.env });
+};
+
+const npm = async (packageName, bucket) => createTempDir()
+  .then(async tempDir => {
     await downloadNpmPackage({
       arg: packageName,
       dir: tempDir
@@ -50,8 +63,36 @@ tmp
 
     console.log(`${chalk.blue(name)} ${chalk.green(version)}`);
     await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir });
-    const zipFileName = `${name.split('/')[1] || name}-${version}.zip`;
-    const zipFile = `${tempDir}/${zipFileName}`;
-    await run('zip', ['-r', '-q', `${zipFile}`, './'], { cwd: tempDir });
-    await run('aws', ['s3', 'cp', zipFile, `s3://${bucket}/${zipFileName}`], { env: process.env });
-  }, { unsafeCleanup: true });
+    await publishToS3(name, version, tempDir, bucket)
+  });
+
+const local = async (bucket) => createTempDir()
+  .then(async tempDir => {
+    const pkg = path.join(process.env.PWD, 'package.json');
+    const { name, version } = JSON.parse(await readFile(pkg), 'utf-8');
+    const now = Date.now();
+    console.log(`${chalk.blue(name)} ${chalk.green(version)} ${chalk.magenta(now)}`);
+    try {
+      await ncp(pkg, path.join(tempDir, 'package.json'));
+      await ncp(path.join(process.env.PWD, 'package-lock.json'), path.join(tempDir, 'package-lock.json'));
+      await ncp(path.join(process.env.PWD, 'dist'), path.join(tempDir, 'dist'));
+      await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir });
+      await publishToS3(name, `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}-development.${now}`, tempDir, bucket)
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+program
+  .command('npm <packageName> <bucket>')
+  .action(async (packageName, bucket) => {
+    await npm(packageName, bucket)
+  });
+
+program
+  .command('local <bucket>')
+  .action(async (bucket) => {
+    await local(bucket)
+  });
+
+program.parse(process.argv);
