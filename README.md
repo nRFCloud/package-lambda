@@ -41,7 +41,7 @@ in the local folder.
 
 Usage: 
 
-    npx @nrfcloud/package-lambda local <NPM Package>
+    npx @nrfcloud/package-lambda local <S3 Bucket>
 
 Example:
 
