@@ -71,16 +71,16 @@ const npm = async (packageName, bucket) => createTempDir()
     return publishToS3(name, version, tempDir, bucket)
   });
 
-const local = async (bucket) => createTempDir()
+const local = async (bucket, sourcefolder) => createTempDir()
   .then(async tempDir => {
-    const pkg = path.join(process.env.PWD, 'package.json');
+    const pkg = path.join(sourcefolder, 'package.json');
     const { name, version } = JSON.parse(await readFile(pkg), 'utf-8');
     const now = Date.now();
     console.error(`${chalk.blue(name)} ${chalk.green(version)} ${chalk.magenta(now)}`);
     try {
       await ncp(pkg, path.join(tempDir, 'package.json'));
-      await ncp(path.join(process.env.PWD, 'package-lock.json'), path.join(tempDir, 'package-lock.json'));
-      await ncp(path.join(process.env.PWD, 'dist'), path.join(tempDir, 'dist'));
+      await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'));
+      await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'));
       await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir });
       return publishToS3(name, `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}-development.${now}`, tempDir, bucket)
     } catch (err) {
@@ -96,8 +96,9 @@ program
 
 program
   .command('local <bucket>')
-  .action(async (bucket) => {
-    process.stdout.write(await local(bucket))
+  .option('-s, --source <directory>', 'Source location', process.env.PWD)
+  .action(async (bucket, {source}) => {
+    process.stdout.write(await local(bucket, source))
   });
 
 program.parse(process.argv);
