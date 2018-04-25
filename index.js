@@ -12,6 +12,7 @@ const ncp = promisify(ncpAsync);
 const chalk = require('chalk');
 const program = require('commander');
 const semver = require('semver');
+const { S3 } = require('aws-sdk');
 
 const run = (cmd, args, options) => new Promise(((resolve, reject) => {
   console.error(`${chalk.grey('running:')} ${chalk.yellow(cmd)} ${chalk.yellow(args.join(' '))} ${chalk.grey('...')}`);
@@ -48,7 +49,10 @@ const publishToS3 = async (name, version, tempDir, bucket) => {
   const zipFileName = `${name.split('/')[1] || name}-${version}.zip`;
   const zipFile = `${tempDir}/${zipFileName}`;
   await run('zip', ['-r', '-q', `${zipFile}`, './'], { cwd: tempDir });
-  await run('aws', ['s3', 'cp', zipFile, `s3://${bucket}/${zipFileName}`], { env: process.env });
+  const zipData = await readFile(zipFile);
+  const s3 = new S3();
+  console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`);
+  await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise();
   return zipFileName;
 };
 
