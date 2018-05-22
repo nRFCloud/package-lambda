@@ -26,9 +26,7 @@
     "semver": "^5.5.0",
     "tmp": "0.0.33"
   },
-  "devDependencies": {
-    "semantic-release": "^15.1.7"
-  },
+  "devDependencies": {},
   "engines": {
     "node": ">=6.0.0"
   },
