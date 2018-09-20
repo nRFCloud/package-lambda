@@ -1,6 +1,6 @@
 {
   "name": "@nrfcloud/package-lambda",
-  "version": "1.3.0",
+  "version": "2.2.0",
   "description": "Package a lambda function and upload it to S3",
   "repository": {
     "type": "git",
