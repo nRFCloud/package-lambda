@@ -75,14 +75,13 @@ const local = async (bucket, sourcefolder) => createTempDir()
   .then(async tempDir => {
     const pkg = path.join(sourcefolder, 'package.json');
     const { name, version } = JSON.parse(await readFile(pkg), 'utf-8');
-    const now = Date.now();
-    console.error(`${chalk.blue(name)} ${chalk.green(version)} ${chalk.magenta(now)}`);
+    console.error(`${chalk.blue(name)} ${chalk.green(version)}`);
     try {
       await ncp(pkg, path.join(tempDir, 'package.json'));
       await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'));
       await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'));
       await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir });
-      return publishToS3(name, `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}-development.${now}`, tempDir, bucket)
+      return publishToS3(name, `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}`, tempDir, bucket)
     } catch (err) {
       console.error(err);
     }
