@@ -51,9 +51,19 @@ const publishToS3 = async (name, version, tempDir, bucket) => {
   await run('zip', ['-r', '-q', `${zipFile}`, './'], { cwd: tempDir });
   const zipData = await readFile(zipFile);
   const s3 = new S3();
-  console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`);
-  await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise();
-  return zipFileName;
+  try {
+    await s3
+      .headObject({
+        Bucket: bucket, Key: zipFileName
+      })
+      .promise();
+    console.error(chalk.yellow(`s3://${Bucket}/${Key} exists`));
+    return zipFileName; // File exists
+  } catch {
+    console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`);
+    await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise();
+    return zipFileName;
+  }
 };
 
 const npm = async (packageName, bucket) => createTempDir()
