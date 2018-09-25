@@ -59,7 +59,7 @@ const publishToS3 = async (name, version, tempDir, bucket) => {
       .promise();
     console.error(chalk.yellow(`s3://${Bucket}/${Key} exists`));
     return zipFileName; // File exists
-  } catch {
+  } catch (_) {
     console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`);
     await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise();
     return zipFileName;
