@@ -72,7 +72,7 @@ const local = async (bucket, sourcefolder) => createTempDir()
     const zipFileName = `${name.split('/')[1] || name}-${v}.zip`
     if (await existsOnS3(zipFileName, bucket)) {
       console.error(chalk.yellow(`s3://${bucket}/${zipFileName} exists`))
-      return
+      return zipFileName
     }
     try {
       await ncp(pkg, path.join(tempDir, 'package.json'))
