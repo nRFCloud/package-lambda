@@ -4,7 +4,6 @@ const { spawn } = require('child_process')
 const { readFile: readFileAsync } = require('fs')
 const { promisify } = require('util')
 const readFile = promisify(readFileAsync)
-const downloadNpmPackage = require('download-npm-package')
 const tmp = require('tmp')
 const path = require('path')
 const ncpAsync = require('ncp').ncp
@@ -66,21 +65,6 @@ const publishToS3 = async (name, version, tempDir, bucket) => {
   }
 }
 
-const npm = async (packageName, bucket) => createTempDir()
-  .then(async tempDir => {
-    await downloadNpmPackage({
-      arg: packageName,
-      dir: tempDir
-    })
-    await ncp(path.join(tempDir, ...packageName.split('/')), tempDir)
-    await run('rm', ['-r', path.join(tempDir, packageName.split('/')[0])], { cwd: tempDir })
-    const { name, version } = JSON.parse(await readFile(path.join(tempDir, 'package.json')), 'utf-8')
-
-    console.error(`${chalk.blue(name)} ${chalk.green(version)}`)
-    await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir })
-    return publishToS3(name, version, tempDir, bucket)
-  })
-
 const local = async (bucket, sourcefolder) => createTempDir()
   .then(async tempDir => {
     const pkg = path.join(sourcefolder, 'package.json')
@@ -95,12 +79,6 @@ const local = async (bucket, sourcefolder) => createTempDir()
     } catch (err) {
       console.error(err)
     }
-  })
-
-program
-  .command('npm <packageName> <bucket>')
-  .action(async (packageName, bucket) => {
-    process.stdout.write(await npm(packageName, bucket))
   })
 
 program
