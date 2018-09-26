@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const { spawn } = require('child_process')
-const { readFile: readFileAsync } = require('fs')
-const { promisify } = require('util')
+const {spawn} = require('child_process')
+const {readFile: readFileAsync} = require('fs')
+const {promisify} = require('util')
 const readFile = promisify(readFileAsync)
 const tmp = require('tmp')
 const path = require('path')
@@ -11,7 +11,7 @@ const ncp = promisify(ncpAsync)
 const chalk = require('chalk')
 const program = require('commander')
 const semver = require('semver')
-const { S3 } = require('aws-sdk')
+const {S3} = require('aws-sdk')
 
 const run = (cmd, args, options) => new Promise((resolve, reject) => {
   console.error(`${chalk.grey('running:')} ${chalk.yellow(cmd)} ${chalk.yellow(args.join(' '))} ${chalk.grey('...')}`)
@@ -31,7 +31,7 @@ const run = (cmd, args, options) => new Promise((resolve, reject) => {
 
   p.on('close', code => {
     if (code !== 0) return reject(new Error(`${cmd} exited with code ${code}.\n${stderr.join('\n')}`))
-    return resolve({ code, stdout: stdout.join('\n'), stderr: stderr.join('\n') })
+    return resolve({code, stdout: stdout.join('\n'), stderr: stderr.join('\n')})
   })
 })
 
@@ -41,37 +41,32 @@ const createTempDir = () => new Promise((resolve, reject) => {
       if (err) return reject(err)
       console.error(`${chalk.gray('Temp dir:')} ${chalk.yellow(tempDir)}`)
       resolve(tempDir)
-    }, { unsafeCleanup: false })
+    }, {unsafeCleanup: false})
 })
 
 const publishToS3 = async (zipFileName, tempDir, bucket) => {
   const zipFile = `${tempDir}/${zipFileName}`
-  await run('zip', ['-r', '-q', `${zipFile}`, './'], { cwd: tempDir })
+  await run('zip', ['-r', '-q', `${zipFile}`, './'], {cwd: tempDir})
   const zipData = await readFile(zipFile)
   const s3 = new S3()
-  console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
-  await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise()
-  return zipFileName
+  return s3.putObject({Body: zipData, Bucket: bucket, Key: zipFileName}).promise()
 }
 
 const existsOnS3 = async (zipFileName, bucket) => {
   const s3 = new S3()
-  try {
-    await s3
-      .headObject({
-        Bucket: bucket, Key: zipFileName
-      })
-      .promise()
-    return true
-  } catch (_) {
-    return false
-  }
+  return s3
+    .headObject({
+      Bucket: bucket, Key: zipFileName
+    })
+    .promise()
+    .then(() => true)
+    .catch(() => false)
 }
 
 const local = async (bucket, sourcefolder) => createTempDir()
   .then(async tempDir => {
     const pkg = path.join(sourcefolder, 'package.json')
-    const { name, version } = JSON.parse(await readFile(pkg), 'utf-8')
+    const {name, version} = JSON.parse(await readFile(pkg), 'utf-8')
     console.error(`${chalk.blue(name)} ${chalk.green(version)}`)
     const v = `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}`
     const zipFileName = `${name.split('/')[1] || name}-${v}.zip`
@@ -83,8 +78,10 @@ const local = async (bucket, sourcefolder) => createTempDir()
       await ncp(pkg, path.join(tempDir, 'package.json'))
       await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'))
       await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'))
-      await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir })
-      return publishToS3(zipFileName, tempDir, bucket)
+      await run('npm', ['ci', '--ignore-scripts', '--only=prod'], {cwd: tempDir})
+      console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
+      await publishToS3(zipFileName, tempDir, bucket)
+      return zipFileName
     } catch (err) {
       console.error(err)
     }
@@ -93,7 +90,7 @@ const local = async (bucket, sourcefolder) => createTempDir()
 program
   .command('local <bucket>')
   .option('-s, --source <directory>', 'Source location', process.env.PWD)
-  .action(async (bucket, { source }) => {
+  .action(async (bucket, {source}) => {
     process.stdout.write(await local(bucket, source))
   })
 
