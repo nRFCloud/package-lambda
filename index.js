@@ -44,11 +44,17 @@ const createTempDir = () => new Promise((resolve, reject) => {
     }, { unsafeCleanup: false })
 })
 
-const publishToS3 = async (name, version, tempDir, bucket) => {
-  const zipFileName = `${name.split('/')[1] || name}-${version}.zip`
+const publishToS3 = async (zipFileName, tempDir, bucket) => {
   const zipFile = `${tempDir}/${zipFileName}`
   await run('zip', ['-r', '-q', `${zipFile}`, './'], { cwd: tempDir })
   const zipData = await readFile(zipFile)
+  const s3 = new S3()
+  console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
+  await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise()
+  return zipFileName
+}
+
+const existsOnS3 = async (zipFileName, bucket) => {
   const s3 = new S3()
   try {
     await s3
@@ -56,12 +62,9 @@ const publishToS3 = async (name, version, tempDir, bucket) => {
         Bucket: bucket, Key: zipFileName
       })
       .promise()
-    console.error(chalk.yellow(`s3://${bucket}/${zipFileName} exists`))
-    return zipFileName // File exists
+    return true
   } catch (_) {
-    console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
-    await s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise()
-    return zipFileName
+    return false
   }
 }
 
@@ -70,12 +73,18 @@ const local = async (bucket, sourcefolder) => createTempDir()
     const pkg = path.join(sourcefolder, 'package.json')
     const { name, version } = JSON.parse(await readFile(pkg), 'utf-8')
     console.error(`${chalk.blue(name)} ${chalk.green(version)}`)
+    const v = `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}`
+    const zipFileName = `${name.split('/')[1] || name}-${v}.zip`
+    if (await existsOnS3(zipFileName, bucket)) {
+      console.error(chalk.yellow(`s3://${bucket}/${zipFileName} exists`))
+      return
+    }
     try {
       await ncp(pkg, path.join(tempDir, 'package.json'))
       await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'))
       await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'))
       await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir })
-      return publishToS3(name, `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}`, tempDir, bucket)
+      return publishToS3(zipFileName, tempDir, bucket)
     } catch (err) {
       console.error(err)
     }
