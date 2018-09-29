@@ -68,8 +68,7 @@ const local = async (bucket, sourcefolder) => createTempDir()
     const pkg = path.join(sourcefolder, 'package.json')
     const {name, version} = JSON.parse(await readFile(pkg), 'utf-8')
     console.error(`${chalk.blue(name)} ${chalk.green(version)}`)
-    const v = `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}`
-    const zipFileName = `${name.split('/')[1] || name}-${v}.zip`
+    const zipFileName = `${name.split('/')[1] || name}-${version}.zip`
     if (await existsOnS3(zipFileName, bucket)) {
       console.error(chalk.yellow(`s3://${bucket}/${zipFileName} exists`))
       return zipFileName
