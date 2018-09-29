@@ -10,7 +10,6 @@ const ncpAsync = require('ncp').ncp
 const ncp = promisify(ncpAsync)
 const chalk = require('chalk')
 const program = require('commander')
-const semver = require('semver')
 const {S3} = require('aws-sdk')
 
 const run = (cmd, args, options) => new Promise((resolve, reject) => {
