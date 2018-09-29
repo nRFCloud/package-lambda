@@ -40,5 +40,10 @@
   },
   "release": {
     "branch": "saga"
-  }
+  },
+  "files": [
+    "index.js",
+    "package-lock.json",
+    "README.md"
+  ]
 }
