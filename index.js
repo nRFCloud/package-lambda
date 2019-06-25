@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 const {spawn} = require('child_process')
 const {readFile: readFileAsync} = require('fs')
 const {promisify} = require('util')
@@ -9,7 +7,6 @@ const path = require('path')
 const ncpAsync = require('ncp').ncp
 const ncp = promisify(ncpAsync)
 const chalk = require('chalk')
-const program = require('commander')
 const {S3} = require('aws-sdk')
 
 const run = (cmd, args, options) => new Promise((resolve, reject) => {
@@ -85,11 +82,4 @@ const local = async (bucket, sourcefolder) => createTempDir()
     }
   })
 
-program
-  .command('local <bucket>')
-  .option('-s, --source <directory>', 'Source location', process.env.PWD)
-  .action(async (bucket, {source}) => {
-    process.stdout.write(await local(bucket, source))
-  })
-
-program.parse(process.argv)
+module.exports = {local};
