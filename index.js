@@ -11,7 +11,7 @@ const { S3 } = require('aws-sdk')
 
 const run = (cmd, args, options) => new Promise((resolve, reject) => {
   console.error(`${chalk.grey('running:')} ${chalk.yellow(cmd)} ${chalk.yellow(args.join(' '))} ${chalk.grey('...')}`)
-  const p = spawn(cmd, args, options)
+  const p = spawn(cmd, args, { ...options, shell: true })
   let stdout = []
   let stderr = []
 
