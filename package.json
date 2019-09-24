@@ -42,6 +42,7 @@
     "branch": "saga"
   },
   "files": [
+    "cli.js",
     "index.js",
     "package-lock.json",
     "README.md"
