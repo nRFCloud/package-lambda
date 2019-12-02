@@ -59,7 +59,7 @@ const existsOnS3 = async (zipFileName, bucket) => {
     .catch(() => false)
 }
 
-const local = async (bucket, sourcefolder) => createTempDir()
+const local = async (bucket, sourcefolder, layer) => createTempDir()
   .then(async tempDir => {
     const pkg = path.join(sourcefolder, 'package.json')
     const { name, version } = JSON.parse(await readFile(pkg), 'utf-8')
@@ -70,10 +70,17 @@ const local = async (bucket, sourcefolder) => createTempDir()
       return zipFileName
     }
     try {
-      await ncp(pkg, path.join(tempDir, 'package.json'))
-      await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'))
-      await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'))
-      await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir })
+      if (layer) {
+        // For a Lambda layer, zip up the entire source tree. Don't install it.
+        await ncp(sourcefolder, tempDir)
+      } else {
+        // For a Lambda function, zip up the file structure we expect
+        await ncp(pkg, path.join(tempDir, 'package.json'))
+        await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'))
+        await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'))
+        // Install the package
+        await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir })
+      }
       console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
       await publishToS3(zipFileName, tempDir, bucket)
       return zipFileName
