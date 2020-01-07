@@ -1,3 +1,5 @@
+'use strict'
+
 const { spawn } = require('child_process')
 const { readFile: readFileAsync } = require('fs')
 const { promisify } = require('util')
@@ -59,7 +61,7 @@ const existsOnS3 = async (zipFileName, bucket) => {
     .catch(() => false)
 }
 
-const local = async (bucket, sourcefolder, layer) => createTempDir()
+const local = async (bucket, sourcefolder, layer, scriptInstallPackages) => createTempDir()
   .then(async tempDir => {
     const pkg = path.join(sourcefolder, 'package.json')
     const { name, version } = JSON.parse(await readFile(pkg), 'utf-8')
@@ -80,6 +82,16 @@ const local = async (bucket, sourcefolder, layer) => createTempDir()
         await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'))
         // Install the package
         await run('npm', ['ci', '--ignore-scripts', '--only=prod'], { cwd: tempDir })
+      }
+      // For each package in this list, run 'npm install' to run certain scripts defined in its package.json,
+      // as described in https://docs.npmjs.com/misc/scripts
+      // Normally scripts aren't run, due to the --ignore-scripts option in the above "npm ci" command.
+      // This gives the option to run install scripts required for some packages to work, such as 'sharp'.
+      if (scriptInstallPackages) {
+        for (let i = 0; i < scriptInstallPackages.length; i++) {
+          console.error(`${chalk.gray('Installing with scripts:')} ${chalk.yellow(scriptInstallPackages[i])}`)
+          await run('npm', ['install', '--only=prod', scriptInstallPackages[i]], { cwd: tempDir })
+        }
       }
       console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
       await publishToS3(zipFileName, tempDir, bucket)
