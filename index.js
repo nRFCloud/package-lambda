@@ -18,7 +18,9 @@ const run = (cmd, args, options) => new Promise((resolve, reject) => {
   let stderr = []
 
   p.stdout.on('data', data => {
-    process.stdout.write(chalk.magenta(data.toString()))
+    // Re-route stdout to stderr, because the only thing the 'local' function should return to stdout
+    // is the name of the zip file.
+    process.stderr.write(chalk.magenta(data.toString()))
     stdout.push(data.toString())
   })
 
@@ -74,9 +76,11 @@ const local = async (bucket, sourcefolder, layer, scriptInstallPackages) => crea
     try {
       if (layer) {
         // For a Lambda layer, zip up the entire source tree. Don't install it.
+        console.error(`${chalk.gray('Packaging as Lambda layer')}`)
         await ncp(sourcefolder, tempDir)
       } else {
         // For a Lambda function, zip up the file structure we expect
+        console.error(`${chalk.gray('Packaging as Lambda function')}`)
         await ncp(pkg, path.join(tempDir, 'package.json'))
         await ncp(path.join(sourcefolder, 'package-lock.json'), path.join(tempDir, 'package-lock.json'))
         await ncp(path.join(sourcefolder, 'dist'), path.join(tempDir, 'dist'))
