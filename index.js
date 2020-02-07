@@ -52,8 +52,6 @@ const publishToS3 = async (zipFileName, tempDir, bucket) => {
   return s3.putObject({ Body: zipData, Bucket: bucket, Key: zipFileName }).promise()
 }
 
-// No longer used! Upload to S3 always, because the file being uploaded could have
-// the same name but different contents (Lambda coda), especially in development
 const existsOnS3 = async (zipFileName, bucket) => {
   const s3 = new S3()
   return s3
@@ -65,12 +63,16 @@ const existsOnS3 = async (zipFileName, bucket) => {
     .catch(() => false)
 }
 
-const local = async (bucket, sourcefolder, layer, scriptInstallPackages) => createTempDir()
+const local = async (bucket, sourcefolder, layer, scriptInstallPackages, alwaysUpload) => createTempDir()
   .then(async tempDir => {
     const pkg = path.join(sourcefolder, 'package.json')
     const { name, version } = JSON.parse(await readFile(pkg), 'utf-8')
     console.error(`${chalk.blue(name)} ${chalk.green(version)}`)
     const zipFileName = `${name.split('/')[1] || name}-${version}.zip`
+    if (!alwaysUpload && await existsOnS3(zipFileName, bucket)) {
+      console.error(chalk.yellow(`s3://${bucket}/${zipFileName} exists`))
+      return zipFileName
+    }
     try {
       if (layer) {
         // For a Lambda layer, zip up the entire source tree. Don't install it.
