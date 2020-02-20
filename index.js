@@ -94,7 +94,7 @@ const local = async (bucket, sourcefolder, layer, scriptInstallPackages, alwaysU
       if (scriptInstallPackages) {
         for (let i = 0; i < scriptInstallPackages.length; i++) {
           console.error(`${chalk.gray('Installing with scripts:')} ${chalk.yellow(scriptInstallPackages[i])}`)
-          await run('npm', ['install', '--only=prod', scriptInstallPackages[i]], { cwd: tempDir })
+          await run('npm', ['ci', '--only=prod', scriptInstallPackages[i]], { cwd: tempDir })
         }
       }
       console.error(`${chalk.gray('Uploading to S3:')} ${chalk.yellow(bucket)}${chalk.gray('/')}${chalk.yellow(zipFileName)}`)
